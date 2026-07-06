@@ -19,14 +19,21 @@ backend/
     ├── prompts.py            # Claude system prompts
     ├── models/
     │   ├── __init__.py       # re-exports models
-    │   └── user.py           # User SQLAlchemy model (id, name, username, hashed_password)
+    │   ├── user.py           # User SQLAlchemy model (id, name, username, hashed_password)
+    │   ├── interview.py      # Interview SQLAlchemy model (belongs to a User, has many Questions)
+    │   ├── question.py       # Question SQLAlchemy model (belongs to an Interview, self-referential parent/children, has many Responses)
+    │   ├── response.py       # Response SQLAlchemy model (belongs to a Question)
+    │   └── additional_user_information.py  # AdditionalUserInformation SQLAlchemy model (1:1 with User)
     ├── routes/
     │   ├── __init__.py
     │   └── auth.py           # /auth/register, /auth/login, /auth/me
     ├── schemas/
     │   ├── __init__.py
     │   ├── token.py          # Pydantic Token schema (JWT response)
-    │   └── user.py           # Pydantic User/UserCreate/UserLogin schemas
+    │   ├── user.py           # Pydantic User/UserCreate/UserLogin schemas
+    │   ├── interview.py      # Pydantic Interview/InterviewCreate schemas
+    │   ├── question.py       # Pydantic Question/QuestionCreate schemas
+    │   └── response.py       # Pydantic Response/ResponseCreate schemas
     └── services/
         ├── __init__.py       # business logic (e.g. Claude calls) goes here
         └── security.py       # password hashing + JWT helpers (create_access_token, get_current_user)
@@ -59,6 +66,7 @@ backend/
    | `ANTHROPIC_API_KEY` | Your Claude API key from the [Anthropic Console](https://console.anthropic.com/) |
    | `DATABASE_URL` | PostgreSQL connection string, e.g. `postgresql://USER:PASSWORD@localhost:5432/DB_NAME` |
    | `DEEPGRAM_API_KEY` | Your Deepgram API key, used for speech-to-text |
+   | `TEXT_TO_SPEECH_API_KEY` | API key for whichever text-to-speech provider is used — not wired up yet, placeholder for now |
    | `SECRET_KEY` | Secret used to sign JWT access tokens — keep this out of version control |
    | `ALGORITHM` | JWT signing algorithm, e.g. `HS256` |
    | `ACCESS_TOKEN_EXPIRE_MINUTES` | How long issued access tokens stay valid, in minutes |
@@ -82,4 +90,6 @@ backend/
 - Claude system prompts live in `api/prompts.py` as plain string constants — import them wherever you call the Claude API.
 - `api/routes/auth.py` implements real authentication: `/auth/register` and `/auth/login` hash/verify passwords with `bcrypt` and return a signed JWT (`api/schemas/token.py`). `/auth/me` is a protected route that reads the current user via the `get_current_user` dependency in `api/services/security.py`.
 - To call a protected route, send the returned `access_token` as `Authorization: Bearer <token>`.
+- `Interview` → `Question` → `Response` model the interview flow: an interview belongs to a user and has many questions (ordered by `sequence_number`); a question can reference a parent question (for follow-ups) and has many responses; a response holds the transcript, timing, score, and feedback for one answer. There are no routes for these yet — only models and Pydantic schemas so far.
+- `AdditionalUserInformation` holds optional profile fields (`target_role`, `experience`, `industry`, `resume_url`) in a 1:1 relationship with `User` (`user.additional_info`). No Pydantic schema or routes yet — model only.
 - Business logic (e.g. wrapping Claude API calls) belongs in `api/services/`, keeping route handlers thin.
