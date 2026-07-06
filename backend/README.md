@@ -19,15 +19,17 @@ backend/
     ├── prompts.py            # Claude system prompts
     ├── models/
     │   ├── __init__.py       # re-exports models
-    │   └── user.py           # User SQLAlchemy model
+    │   └── user.py           # User SQLAlchemy model (id, name, username, hashed_password)
     ├── routes/
     │   ├── __init__.py
-    │   └── auth.py           # /auth/register, /auth/login
+    │   └── auth.py           # /auth/register, /auth/login, /auth/me
     ├── schemas/
     │   ├── __init__.py
-    │   └── user.py           # Pydantic User/UserCreate schemas
+    │   ├── token.py          # Pydantic Token schema (JWT response)
+    │   └── user.py           # Pydantic User/UserCreate/UserLogin schemas
     └── services/
-        └── __init__.py       # business logic (e.g. Claude calls) goes here
+        ├── __init__.py       # business logic (e.g. Claude calls) goes here
+        └── security.py       # password hashing + JWT helpers (create_access_token, get_current_user)
 ```
 
 ## Setup
@@ -56,6 +58,10 @@ backend/
    | --- | --- |
    | `ANTHROPIC_API_KEY` | Your Claude API key from the [Anthropic Console](https://console.anthropic.com/) |
    | `DATABASE_URL` | PostgreSQL connection string, e.g. `postgresql://USER:PASSWORD@localhost:5432/DB_NAME` |
+   | `DEEPGRAM_API_KEY` | Your Deepgram API key, used for speech-to-text |
+   | `SECRET_KEY` | Secret used to sign JWT access tokens — keep this out of version control |
+   | `ALGORITHM` | JWT signing algorithm, e.g. `HS256` |
+   | `ACCESS_TOKEN_EXPIRE_MINUTES` | How long issued access tokens stay valid, in minutes |
 
    You'll need a running PostgreSQL instance for `DATABASE_URL` to work. Tables are created automatically on startup via `init_db()`.
 
@@ -74,5 +80,6 @@ backend/
 - CORS is currently configured to allow only `http://localhost:3000` and `http://127.0.0.1:3000` (the default React dev server). Update `origins` in `api/app.py` if your frontend runs elsewhere.
 - All environment variables are loaded once in `api/config.py` — import from there rather than calling `load_dotenv()`/`os.getenv()` elsewhere.
 - Claude system prompts live in `api/prompts.py` as plain string constants — import them wherever you call the Claude API.
-- `api/routes/auth.py` currently registers/looks up users by email only — there's no password field on the `User` model yet, so it isn't real authentication until that's added.
+- `api/routes/auth.py` implements real authentication: `/auth/register` and `/auth/login` hash/verify passwords with `bcrypt` and return a signed JWT (`api/schemas/token.py`). `/auth/me` is a protected route that reads the current user via the `get_current_user` dependency in `api/services/security.py`.
+- To call a protected route, send the returned `access_token` as `Authorization: Bearer <token>`.
 - Business logic (e.g. wrapping Claude API calls) belongs in `api/services/`, keeping route handlers thin.
