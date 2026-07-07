@@ -65,8 +65,7 @@ backend/
    | --- | --- |
    | `ANTHROPIC_API_KEY` | Your Claude API key from the [Anthropic Console](https://console.anthropic.com/) |
    | `DATABASE_URL` | PostgreSQL connection string, e.g. `postgresql://USER:PASSWORD@localhost:5432/DB_NAME` |
-   | `DEEPGRAM_API_KEY` | Your Deepgram API key, used for speech-to-text |
-   | `INTERVIEWLY_API_KEY` | API key for whichever text-to-speech provider is used — not wired up yet, placeholder for now |
+   | `DEEPGRAM_API_KEY` | Your Deepgram API key, used for speech-to-text and text-to-speech |
    | `SECRET_KEY` | Secret used to sign JWT access tokens — keep this out of version control |
    | `ALGORITHM` | JWT signing algorithm, e.g. `HS256` |
    | `ACCESS_TOKEN_EXPIRE_MINUTES` | How long issued access tokens stay valid, in minutes |

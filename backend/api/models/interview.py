@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import relationship
 
 from api.database import Base
@@ -12,15 +12,17 @@ class Interview(Base):
 
     start_time = Column(DateTime(timezone=True), nullable=True)
     end_time = Column(DateTime(timezone=True), nullable=True)
-    planned_duration = Column(Integer, nullable=True)
+    planned_duration = Column(Integer, nullable=False)
 
-    company = Column(String, nullable=True)
-    role = Column(String, nullable=True)
-    interview_type = Column(String, nullable=True)
-    difficulty = Column(String, nullable=True)
+    company = Column(String, nullable=False)
+    role = Column(String, nullable=False)
+    interview_type = Column(String, nullable=False)
+    difficulty = Column(String, nullable=False)
 
     overall_score = Column(Float, nullable=True)
     feedback = Column(Text, nullable=True)
+
+    completed = Column(Boolean, nullable=False, default=False, server_default="false")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

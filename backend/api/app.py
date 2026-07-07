@@ -1,12 +1,10 @@
 from contextlib import asynccontextmanager
 
-import anthropic
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.config import ANTHROPIC_API_KEY
 from api.database import init_db
-from api.routes import auth
+from api.routes import auth, interviews
 
 
 @asynccontextmanager
@@ -16,7 +14,6 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-claude = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 origins = [
     "http://localhost:3000",
@@ -32,6 +29,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(interviews.router)
 
 
 @app.get("/")
