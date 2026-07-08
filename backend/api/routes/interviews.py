@@ -53,7 +53,7 @@ def get_interview(
     return interview
 
 
-@router.post("/", response_model=Interview)
+@router.post("/create_interview", response_model=Interview)
 def create_interview(
     interview: InterviewCreate,
     db: Session = Depends(get_db),
@@ -73,16 +73,40 @@ def create_interview(
     return new_interview
 
 
-@router.delete("/{interview_id}")
+@router.delete("/{interview_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_interview(
     interview_id: int,
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user),
 ):
-    pass
+    owned_interview_ids = db.query(InterviewModel.id).filter(
+        InterviewModel.id == interview_id,
+        InterviewModel.user_id == current_user.id,
+    )
+    question_ids = db.query(QuestionModel.id).filter(
+        QuestionModel.interview_id.in_(owned_interview_ids)
+    )
+
+    db.query(ResponseModel).filter(ResponseModel.question_id.in_(question_ids)).delete(
+        synchronize_session=False
+    )
+    db.query(QuestionModel).filter(QuestionModel.interview_id.in_(owned_interview_ids)).delete(
+        synchronize_session=False
+    )
+    deleted = (
+        db.query(InterviewModel)
+        .filter(InterviewModel.id == interview_id, InterviewModel.user_id == current_user.id)
+        .delete(synchronize_session=False)
+    )
+
+    if deleted == 0:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interview not found")
+
+    db.commit()
 
 
-@router.websocket("/ws")
+@router.websocket("/interview_session/{interview_id}")
 async def interview_session(
     websocket: WebSocket,
     interview_id: int,

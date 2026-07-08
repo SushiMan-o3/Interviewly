@@ -26,6 +26,16 @@ def client():
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
+    app.state.testing_session_local = TestingSessionLocal
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def db_session(client):
+    session = client.app.state.testing_session_local()
+    try:
+        yield session
+    finally:
+        session.close()
