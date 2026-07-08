@@ -43,7 +43,3 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     access_token = create_access_token(existing.username)
     return Token(access_token=access_token)
 
-
-@router.get("/me", response_model=User)
-def read_current_user(current_user: models.User = Depends(get_current_user)):
-    return current_user

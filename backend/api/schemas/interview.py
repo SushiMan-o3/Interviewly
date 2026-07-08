@@ -39,3 +39,18 @@ class CompletedInterview(Interview):
     overall_score: float
     feedback: str
     completed: bool = True
+
+
+class InterviewSummary(BaseModel):
+    id: int
+    user_id: int
+    created_at: datetime
+    completed: bool
+    planned_duration: int
+    interview_type: str
+    difficulty: str
+    role: str
+    company: str
+
+    class Config:
+        from_attributes = True
