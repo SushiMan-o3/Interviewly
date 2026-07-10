@@ -113,4 +113,53 @@ async def interview_session(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user),
 ):
-    pass
+    # Accept the WebSocket connection
+    await websocket.accept()
+    
+    # start the interview and ask how they are doing
+    await websocket.send_json({"message": "Welcome to the interview session! How are you doing today?"})
+    
+    while True:
+        try:
+            # Receive audio data from the client
+            audio_data = await websocket.receive_bytes()
+
+            # Transcribe the audio to text
+            user_question_text = transcribe_audio(audio_data)
+
+            # Save the user's question to the database
+            new_question = QuestionModel(
+                interview_id=interview_id,
+                question_text=user_question_text,
+            )
+            db.add(new_question)
+            db.commit()
+            db.refresh(new_question)
+
+            # Generate a response using Claude
+            claude_response_text = ask_claude(
+                INTERVIEWER_SYSTEM_PROMPT, user_question_text
+            )
+
+            # Save the response to the database
+            new_response = ResponseModel(
+                question_id=new_question.id,
+                response_text=claude_response_text,
+            )
+            db.add(new_response)
+            db.commit()
+            db.refresh(new_response)
+
+            # Synthesize the response to speech
+            response_audio_data = synthesize_speech(claude_response_text)
+
+            # Send the synthesized audio back to the client
+            await websocket.send_bytes(response_audio_data)
+
+        except Exception as e:
+            await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+            break
+
+    # Close the database session
+    db.close()
+
