@@ -17,7 +17,7 @@ from api.services.speech_service import synthesize_speech, transcribe_audio
 router = APIRouter(prefix="/interviews", tags=["interviews"])
 
 
-@router.get("/", response_model=list[InterviewSummary])
+@router.get("/interviews", response_model=list[InterviewSummary])
 def get_interviews(
     skip: int = 0,
     limit: int = 6,
@@ -121,45 +121,12 @@ async def interview_session(
     
     while True:
         try:
-            # Receive audio data from the client
-            audio_data = await websocket.receive_bytes()
-
-            # Transcribe the audio to text
-            user_question_text = transcribe_audio(audio_data)
-
-            # Save the user's question to the database
-            new_question = QuestionModel(
-                interview_id=interview_id,
-                question_text=user_question_text,
-            )
-            db.add(new_question)
+            pass
+        
             db.commit()
-            db.refresh(new_question)
-
-            # Generate a response using Claude
-            claude_response_text = ask_claude(
-                INTERVIEWER_SYSTEM_PROMPT, user_question_text
-            )
-
-            # Save the response to the database
-            new_response = ResponseModel(
-                question_id=new_question.id,
-                response_text=claude_response_text,
-            )
-            db.add(new_response)
-            db.commit()
-            db.refresh(new_response)
-
-            # Synthesize the response to speech
-            response_audio_data = synthesize_speech(claude_response_text)
-
-            # Send the synthesized audio back to the client
-            await websocket.send_bytes(response_audio_data)
 
         except Exception as e:
             await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
             break
 
-    # Close the database session
-    db.close()
 

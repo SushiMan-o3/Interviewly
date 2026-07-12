@@ -54,3 +54,8 @@ class InterviewSummary(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class InterviewFeedbackOut(BaseModel):
+    score: int
+    feedback: str
