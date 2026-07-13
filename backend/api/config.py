@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
