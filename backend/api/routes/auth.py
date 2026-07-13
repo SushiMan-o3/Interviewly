@@ -42,13 +42,3 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
     access_token = create_access_token(existing.username)
     return Token(access_token=access_token)
-
-@router.put("/forgot_password", response_model=Token)
-def forgot_password(user: UserLogin, db: Session = Depends(get_db)):
-    existing = db.query(models.User).filter(models.User.username == user.username).first()
-    if not existing:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    pass 
-
-    return 
