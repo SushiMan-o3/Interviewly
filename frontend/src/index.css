@@ -1,0 +1,11 @@
+@import "./styles-nocturne.css";
+@import "./pages.css";
+
+body {
+  margin: 0;
+  background: var(--color-bg, #161826);
+}
+
+#root {
+  min-height: 100vh;
+}

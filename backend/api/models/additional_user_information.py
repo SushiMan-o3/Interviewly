@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, LargeBinary, String
 from sqlalchemy.orm import relationship
 
 from api.database import Base
@@ -13,6 +13,6 @@ class AdditionalUserInformation(Base):
     target_role = Column(String, nullable=True)
     experience = Column(String, nullable=True)
     industry = Column(String, nullable=True)
-    resume_url = Column(String, nullable=True)
+    resume = Column(LargeBinary, nullable=True)
 
     user = relationship("User", back_populates="additional_info")

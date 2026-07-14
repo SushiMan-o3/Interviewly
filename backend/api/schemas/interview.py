@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import UploadFile
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from api.schemas.question import Question
 
@@ -18,7 +18,7 @@ class InterviewBase(BaseModel):
 class InterviewCreate(InterviewBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    resume: UploadFile
+    resume: Optional[UploadFile] = None
 
 
 class Interview(InterviewBase):
@@ -30,7 +30,7 @@ class Interview(InterviewBase):
     feedback: Optional[str] = None
     completed: bool = False
     created_at: datetime
-    QuestionAnswer: list[Question] = []
+    QuestionAnswer: list[Question] = Field(default_factory=list, validation_alias="questions")
 
     class Config:
         from_attributes = True

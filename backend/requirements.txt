@@ -8,6 +8,7 @@ pydantic
 pyjwt
 pytest
 python-dotenv>=1.0.0
+python-multipart
 sqlalchemy
 uvicorn[standard]>=0.30.0
 websockets>=11.0.0

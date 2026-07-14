@@ -30,7 +30,7 @@ class Interview(Base):
     interview_type = Column(String, nullable=False)
     difficulty = Column(String, nullable=False)
 
-    resume = Column(LargeBinary, nullable=False)
+    resume = Column(LargeBinary, nullable=True)
 
     overall_score = Column(Float, nullable=True)
     feedback = Column(Text, nullable=True)

@@ -13,8 +13,6 @@ from sqlalchemy.orm import Session
 
 from api.database import get_db
 from api.models import Interview as InterviewModel
-from api.models import Question as QuestionModel
-from api.models import Response as ResponseModel
 from api.models import User as UserModel
 from api.prompts import INTERVIEWER_SYSTEM_PROMPT
 from api.schemas.interview import Interview, InterviewCreate, InterviewSummary
@@ -69,12 +67,16 @@ def create_interview(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user),
 ):
-    if interview.resume.content_type != "application/pdf":
-        raise HTTPException(status_code=400, detail="Resume must be a PDF file")
+    resume_bytes = None
+    if interview.resume is not None:
+        if interview.resume.content_type != "application/pdf":
+            raise HTTPException(status_code=400, detail="Resume must be a PDF file")
 
-    resume_bytes = interview.resume.file.read()
-    if not resume_bytes.startswith(b"%PDF-"):
-        raise HTTPException(status_code=400, detail="Resume must be a valid PDF file")
+        resume_bytes = interview.resume.file.read()
+        if not resume_bytes.startswith(b"%PDF-"):
+            raise HTTPException(status_code=400, detail="Resume must be a valid PDF file")
+    elif current_user.additional_info is not None:
+        resume_bytes = current_user.additional_info.resume
 
     new_interview = InterviewModel(
         user_id=current_user.id,
@@ -97,30 +99,15 @@ def delete_interview(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user),
 ):
-    owned_interview_ids = db.query(InterviewModel.id).filter(
-        InterviewModel.id == interview_id,
-        InterviewModel.user_id == current_user.id,
-    )
-    question_ids = db.query(QuestionModel.id).filter(
-        QuestionModel.interview_id.in_(owned_interview_ids)
-    )
-
-    db.query(ResponseModel).filter(ResponseModel.question_id.in_(question_ids)).delete(
-        synchronize_session=False
-    )
-    db.query(QuestionModel).filter(QuestionModel.interview_id.in_(owned_interview_ids)).delete(
-        synchronize_session=False
-    )
-    deleted = (
+    interview = (
         db.query(InterviewModel)
         .filter(InterviewModel.id == interview_id, InterviewModel.user_id == current_user.id)
-        .delete(synchronize_session=False)
+        .first()
     )
-
-    if deleted == 0:
-        db.rollback()
+    if interview is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interview not found")
 
+    db.delete(interview)
     db.commit()
 
 
@@ -157,8 +144,10 @@ async def interview_session(
 
     try:
         while True:
-            pass
-        
+            await websocket.receive()
+            
+            
+
     except WebSocketDisconnect:
         pass
     except Exception:
