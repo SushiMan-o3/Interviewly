@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, status
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
 from sqlalchemy.orm import Session
 
 from api.database import get_db
@@ -11,7 +11,7 @@ from api.schemas.interview import Interview, InterviewCreate, InterviewSummary
 from api.schemas.question import Question
 from api.schemas.response import Response
 from api.services.claude_service import ask_claude
-from api.services.security import get_current_user
+from api.services.security import get_current_user, get_user_from_token
 from api.services.speech_service import synthesize_speech, transcribe_audio
 
 router = APIRouter(prefix="/interviews", tags=["interviews"])
@@ -110,23 +110,52 @@ def delete_interview(
 async def interview_session(
     websocket: WebSocket,
     interview_id: int,
+    token: str,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
 ):
-    # Accept the WebSocket connection
+    # Browsers can't set custom headers on a WebSocket handshake, so the
+    # auth token is passed as a query param instead of an Authorization header.
+    try:
+        current_user = get_user_from_token(token, db)
+    except HTTPException:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    interview = (
+        db.query(InterviewModel)
+        .filter(
+            InterviewModel.id == interview_id,
+            InterviewModel.user_id == current_user.id,
+        )
+        .first()
+    )
+    if interview is None:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
     await websocket.accept()
-    
+
     # start the interview and ask how they are doing
     await websocket.send_json({"message": "Welcome to the interview session! How are you doing today?"})
-    
-    while True:
-        try:
-            pass
-        
-            db.commit()
 
-        except Exception as e:
-            await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
-            break
+    try:
+        while True:
+            data = await websocket.receive()
+
+            if data.get("type") != "websocket.receive":
+                continue
+
+            if "text" in data and data["text"] is not None:
+                # Placeholder echo until the real interview engine is wired in.
+                await websocket.send_json({"message": f"Received: {data['text']}"})
+            elif "bytes" in data and data["bytes"] is not None:
+                # Audio chunks from the record button land here.
+                await websocket.send_json({"message": "Received audio chunk"})
+
+            db.commit()
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
 
 

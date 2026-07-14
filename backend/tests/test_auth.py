@@ -9,7 +9,7 @@ import pytest
 
 
 def test_register_returns_access_token(register_user):
-    response = register_user(username="alice", password="Password123!", name="Alice")
+    response = register_user(username="SushiMan", password="C@tchM3!", name="Sushim Malla")
 
     assert response.status_code == 200
     body = response.json()

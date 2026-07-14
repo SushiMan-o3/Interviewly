@@ -2,7 +2,6 @@ anthropic
 bcrypt
 deepgram-sdk
 fastapi>=0.115.0
-gtts
 psycopg2-binary
 pydantic
 pyjwt

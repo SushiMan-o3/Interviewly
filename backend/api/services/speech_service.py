@@ -2,7 +2,6 @@ import io
 
 import speech_recognition as sr
 from deepgram import DeepgramClient
-from gtts import gTTS
 
 from api.config import DEEPGRAM_API_KEY, STT_MODEL, TTS_MODEL
 
@@ -27,12 +26,6 @@ def transcribe_audio(audio_bytes: bytes) -> str:
 
 
 def synthesize_speech(text: str) -> bytes:
-    """Text-to-speech: uses Deepgram if configured, otherwise falls back to
-    gTTS (Google Translate's free text-to-speech endpoint). Returns raw MP3 audio bytes."""
-    if _client is None:
-        buffer = io.BytesIO()
-        gTTS(text=text).write_to_fp(buffer)
-        return buffer.getvalue()
-
+    """Text-to-speech via Deepgram. Returns raw audio bytes."""
     audio_chunks = _client.speak.v1.audio.generate(text=text, model=TTS_MODEL)
     return b"".join(audio_chunks)

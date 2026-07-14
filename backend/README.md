@@ -18,7 +18,7 @@ backend/
 │   ├── test_auth.py         # /auth/* endpoint tests
 │   ├── test_interviews.py   # /interviews/* endpoint tests (placeholder, routes are stubs)
 │   ├── test_claude_service.py     # ask_claude tests (mocks the Anthropic client)
-│   ├── test_speech_service.py     # transcribe_audio/synthesize_speech tests (mocks Deepgram/gTTS/SpeechRecognition)
+│   ├── test_speech_service.py     # transcribe_audio/synthesize_speech tests (mocks Deepgram/SpeechRecognition)
 │   └── test_interview_engine.py   # placeholder for interview_engine tests
 └── api/
     ├── app.py               # FastAPI app instance, CORS, router mounting
@@ -102,7 +102,7 @@ backend/
    pytest
    ```
 
-   Tests use an in-memory SQLite database (see `tests/conftest.py`) and mock out Deepgram/Anthropic/gTTS, so no `.env` values or external API keys are required to run the suite.
+   Tests use an in-memory SQLite database (see `tests/conftest.py`) and mock out Deepgram/Anthropic, so no `.env` values or external API keys are required to run the suite.
 
 ## Notes
 
@@ -110,7 +110,7 @@ backend/
 - All environment variables are loaded once in `api/config.py` — import from there rather than calling `load_dotenv()`/`os.getenv()` elsewhere.
 - Claude system prompts live in `api/prompts.py` as plain string constants — import them wherever you call the Claude API.
 - `api/services/claude_service.py` wraps the Anthropic client in `ask_claude(messages, system_prompt)`, used for asking Claude interview-related prompts.
-- `api/services/speech_service.py` handles speech-to-text and text-to-speech. If `DEEPGRAM_API_KEY` is set, both `transcribe_audio` and `synthesize_speech` use Deepgram. If it's unset: `transcribe_audio` falls back to `SpeechRecognition`'s free Google Web Speech API recognizer, and `synthesize_speech` falls back to `gTTS` (Google Translate's free text-to-speech endpoint) — both require internet access but no API key.
+- `api/services/speech_service.py` handles speech-to-text and text-to-speech. `synthesize_speech` always uses Deepgram (requires `DEEPGRAM_API_KEY`). `transcribe_audio` uses Deepgram if `DEEPGRAM_API_KEY` is set, otherwise falls back to `SpeechRecognition`'s free Google Web Speech API recognizer (requires internet access but no API key).
 - `api/services/interview_engine.py` is a placeholder for the interview session orchestration logic (calling Claude for questions/follow-ups, scoring responses, etc.) — not yet implemented.
 - `api/routes/auth.py` implements real authentication: `/auth/register` and `/auth/login` hash/verify passwords with `bcrypt` and return a signed JWT (`api/schemas/token.py`). `/auth/me` is a protected route that reads the current user via the `get_current_user` dependency in `api/services/security.py`.
 - To call a protected route, send the returned `access_token` as `Authorization: Bearer <token>`.
