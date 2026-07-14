@@ -1,4 +1,15 @@
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import relationship
 
 from api.database import Base
@@ -18,6 +29,8 @@ class Interview(Base):
     role = Column(String, nullable=False)
     interview_type = Column(String, nullable=False)
     difficulty = Column(String, nullable=False)
+
+    resume = Column(LargeBinary, nullable=False)
 
     overall_score = Column(Float, nullable=True)
     feedback = Column(Text, nullable=True)

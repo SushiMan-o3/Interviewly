@@ -1,4 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+from typing import Annotated
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    Form,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from api.database import get_db
@@ -55,10 +65,17 @@ def get_interview(
 
 @router.post("/create_interview", response_model=Interview)
 def create_interview(
-    interview: InterviewCreate,
+    interview: Annotated[InterviewCreate, Form()],
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user),
 ):
+    if interview.resume.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Resume must be a PDF file")
+
+    resume_bytes = interview.resume.file.read()
+    if not resume_bytes.startswith(b"%PDF-"):
+        raise HTTPException(status_code=400, detail="Resume must be a valid PDF file")
+
     new_interview = InterviewModel(
         user_id=current_user.id,
         company=interview.company,
@@ -66,6 +83,7 @@ def create_interview(
         interview_type=interview.interview_type,
         difficulty=interview.difficulty,
         planned_duration=interview.planned_duration,
+        resume=resume_bytes,
     )
     db.add(new_interview)
     db.commit()
@@ -113,8 +131,6 @@ async def interview_session(
     token: str,
     db: Session = Depends(get_db),
 ):
-    # Browsers can't set custom headers on a WebSocket handshake, so the
-    # auth token is passed as a query param instead of an Authorization header.
     try:
         current_user = get_user_from_token(token, db)
     except HTTPException:
@@ -133,29 +149,17 @@ async def interview_session(
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
-    await websocket.accept()
+    if interview.completed:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
 
-    # start the interview and ask how they are doing
-    await websocket.send_json({"message": "Welcome to the interview session! How are you doing today?"})
+    await websocket.accept()
 
     try:
         while True:
-            data = await websocket.receive()
-
-            if data.get("type") != "websocket.receive":
-                continue
-
-            if "text" in data and data["text"] is not None:
-                # Placeholder echo until the real interview engine is wired in.
-                await websocket.send_json({"message": f"Received: {data['text']}"})
-            elif "bytes" in data and data["bytes"] is not None:
-                # Audio chunks from the record button land here.
-                await websocket.send_json({"message": "Received audio chunk"})
-
-            db.commit()
+            pass
+        
     except WebSocketDisconnect:
         pass
     except Exception:
         await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
-
-

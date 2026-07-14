@@ -29,7 +29,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
-app.include_router(interviews.router)
+# app.include_router(interviews.router)
 
 
 @app.get("/")

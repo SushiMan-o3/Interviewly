@@ -1,13 +1,13 @@
 anthropic
 bcrypt
 deepgram-sdk
+email-validator
 fastapi>=0.115.0
 psycopg2-binary
 pydantic
 pyjwt
 pytest
 python-dotenv>=1.0.0
-SpeechRecognition>=3.10.0
 sqlalchemy
 uvicorn[standard]>=0.30.0
 websockets>=11.0.0

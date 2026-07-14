@@ -1,19 +1,20 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserBase(BaseModel):
     name: str
     username: str
+    email: EmailStr
 
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(min_length=8)
 
 
 class UserLogin(BaseModel):
-    username: str
+    identifier: str = Field(description="Username or email")
     password: str
 
 

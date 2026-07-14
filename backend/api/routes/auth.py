@@ -17,13 +17,23 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=Token)
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    existing = db.query(models.User).filter(models.User.username == user.username).first()
+    existing = (
+        db.query(models.User)
+        .filter((models.User.username == user.username) | (models.User.email == user.email))
+        .first()
+    )
     if existing:
-        raise HTTPException(status_code=400, detail="Username already registered")
+        detail = (
+            "Username already registered"
+            if existing.username == user.username
+            else "Email already registered"
+        )
+        raise HTTPException(status_code=400, detail=detail)
 
     new_user = models.User(
         name=user.name,
         username=user.username,
+        email=user.email,
         hashed_password=hash_password(user.password),
     )
     db.add(new_user)
@@ -36,7 +46,13 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(user: UserLogin, db: Session = Depends(get_db)):
-    existing = db.query(models.User).filter(models.User.username == user.username).first()
+    existing = (
+        db.query(models.User)
+        .filter(
+            (models.User.username == user.identifier) | (models.User.email == user.identifier)
+        )
+        .first()
+    )
     if not existing or not verify_password(user.password, existing.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
