@@ -46,6 +46,9 @@ export interface InterviewSummary {
   difficulty: string;
   role: string;
   company: string;
+  start_time: string | null;
+  end_time: string | null;
+  overall_score: number | null;
 }
 
 export interface Interview extends InterviewSummary {

@@ -54,6 +54,9 @@ class InterviewSummary(BaseModel):
     difficulty: str
     role: str
     company: str
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    overall_score: Optional[float] = None
 
     class Config:
         from_attributes = True
