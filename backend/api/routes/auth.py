@@ -58,3 +58,27 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
     access_token = create_access_token(existing.username)
     return Token(access_token=access_token)
+
+
+@router.post("/forget-password", status_code=204)
+def forget_password(user: UserLogin, db: Session = Depends(get_db)):
+    existing = (
+        db.query(models.User)
+        .filter(
+            (models.User.username == user.identifier) | (models.User.email == user.identifier)
+        )
+        .first()
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # send them a reset password link via email (not implemented)
+    
+    return
+
+
+@router.post("/reset-password", status_code=204)
+def reset_password(
+    token: UserLogin, new_password: str, db: Session = Depends(get_db)
+):
+    pass
