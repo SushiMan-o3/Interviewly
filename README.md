@@ -4,7 +4,7 @@ AI mock interviewer that asks questions, listens to your answers, and gives real
 Made by Sushim Malla, Gurnoor Sandhu
 
 ## How it works
-
+- ill write this later 
 
 ## Technologies
 
@@ -49,5 +49,5 @@ I'd add the buy me a coffee stuff but I dont have it set up.
 
 ## Set Up
 
-- ill write this later
+- ill write this later too
 
