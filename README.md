@@ -7,6 +7,30 @@ AI mock interviewer that asks questions, listens to your answers, and gives real
 
 ## Technologies
 
+**Backend**
+- Python
+- FastAPI — web framework / REST + WebSocket routes
+- Uvicorn — ASGI server
+- SQLAlchemy — ORM
+- PostgreSQL (via `psycopg2-binary`) — database
+- Pydantic — request/response validation & schemas
+- PyJWT — auth tokens
+- bcrypt — password hashing
+- python-multipart — file/form uploads (resume PDFs)
+- websockets — real-time interview session
+- python-dotenv — environment config
+- pytest — testing
+
+**AI & speech**
+- Anthropic Claude — interview questions, follow-ups, feedback, resume parsing
+- Deepgram — speech-to-text and text-to-speech
+
+**Frontend**
+- React 19 + TypeScript
+- Vite — dev server / build tool
+- React Router — client-side routing
+- Axios — HTTP client
+- oxlint — linting
 
 ## System Architectue
 <img width="707" height="741" alt="image" src="https://github.com/user-attachments/assets/38f0bfc8-a437-4518-b2df-bf11013fbbdf" />
