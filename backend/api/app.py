@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.database import init_db
-from api.routes import auth, interviews, settings
+from api.routes import auth, interviews, settings, dashboard
 
 
 @asynccontextmanager
@@ -26,6 +26,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(interviews.router)
 app.include_router(settings.router)
+# app.include_router(dashboard.router)
 
 
 @app.get("/")
