@@ -20,11 +20,14 @@ export default function InterviewSessionPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatOpen, setChatOpen] = useState(true);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(true);
   const [cameraOn, setCameraOn] = useState(false);
   const [input, setInput] = useState("");
 
@@ -46,6 +49,14 @@ export default function InterviewSessionPage() {
     };
 
     socket.onmessage = (event) => {
+      if (event.data instanceof Blob) {
+        const audioUrl = URL.createObjectURL(event.data);
+        const audio = new Audio(audioUrl);
+        audio.onended = () => URL.revokeObjectURL(audioUrl);
+        audio.play().catch(() => URL.revokeObjectURL(audioUrl));
+        return;
+      }
+
       let text = event.data;
       try {
         const parsed = JSON.parse(event.data);
@@ -78,8 +89,52 @@ export default function InterviewSessionPage() {
   useEffect(() => {
     return () => {
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaRecorderRef.current?.stop();
     };
   }, []);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
+      audioChunksRef.current = [];
+
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
+        audioChunksRef.current = [];
+        if (audioBlob.size > 0 && socketRef.current?.readyState === WebSocket.OPEN) {
+          socketRef.current.send(audioBlob);
+        }
+        micStreamRef.current?.getTracks().forEach((track) => track.stop());
+        micStreamRef.current = null;
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+    } catch {
+      setMessages((prev) => [...prev, { id: nextMessageId++, type: "system", text: "Could not access your microphone." }]);
+      setMuted(true);
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    mediaRecorderRef.current = null;
+  };
+
+  const toggleMute = () => {
+    if (muted) {
+      setMuted(false);
+      startRecording();
+    } else {
+      setMuted(true);
+      stopRecording();
+    }
+  };
 
   const toggleCamera = async () => {
     if (cameraOn) {
@@ -150,7 +205,7 @@ export default function InterviewSessionPage() {
               className={`control-btn mute${muted ? " active" : ""}`}
               type="button"
               title="Mute/Unmute"
-              onClick={() => setMuted((m) => !m)}
+              onClick={toggleMute}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>

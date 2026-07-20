@@ -7,11 +7,15 @@ _client = DeepgramClient(api_key=DEEPGRAM_API_KEY)
 
 def transcribe_audio(audio_bytes: bytes) -> str:
     """Speech-to-text via Deepgram."""
+    with open("debug_audio.webm", "wb") as f:
+        f.write(audio_bytes)
+
     response = _client.listen.v1.media.transcribe_file(
         request=audio_bytes,
         model=STT_MODEL,
         smart_format=True,
     )
+    print(response)
     return response.results.channels[0].alternatives[0].transcript
 
 

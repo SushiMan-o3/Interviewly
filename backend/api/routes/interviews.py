@@ -1,3 +1,4 @@
+import traceback
 from datetime import datetime
 from typing import Annotated
 
@@ -174,13 +175,19 @@ async def interview_session(
         history.append({"role": "assistant", "content": greeting})
 
         while True:
-            await websocket.receive()
-            
-            
+            audio_bytes = await websocket.receive_bytes()
+            transcribed_bytes = transcribe_audio(audio_bytes)
+
+            if not transcribed_bytes:
+                await websocket.send_text("Is your mic turned on? I cannot hear you.")
+                continue
+
+            print("transcibed bytes:" + transcribed_bytes)
 
     except WebSocketDisconnect:
         pass
     except Exception:
+        traceback.print_exc()
         await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
     finally:
         interview.end_time = datetime.now()
