@@ -1,5 +1,5 @@
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Annotated
 
 from fastapi import (
@@ -15,16 +15,19 @@ from sqlalchemy.orm import Session
 
 from api.database import get_db
 from api.models import Interview as InterviewModel
+from api.models import Question as QuestionModel
+from api.models import Response as ResponseModel
 from api.models import User as UserModel
-from api.prompts import INTERVIEWER_SYSTEM_PROMPT
+from api.prompts import INTERVIEWER_SYSTEM_PROMPT, TIME_CHECK_TEMPLATE
 from api.schemas.interview import Interview, InterviewCreate, InterviewSummary
-from api.schemas.question import Question
-from api.schemas.response import Response
 from api.services.claude_service import ask_claude, transcribe_resume
 from api.services.security import get_current_user, get_user_from_token
 from api.services.speech_service import synthesize_speech, transcribe_audio
 
 router = APIRouter(prefix="/interviews", tags=["interviews"])
+
+# How far past the planned duration the interview is allowed to run before it's cut off.
+END_INTERVIEW_GRACE_MINUTES = 5
 
 
 @router.get("/interviews", response_model=list[InterviewSummary])
@@ -159,10 +162,14 @@ async def interview_session(
     interview.start_time = datetime.now()
     db.commit()
 
+    planned_duration = timedelta(minutes=interview.planned_duration)
+    hard_deadline = interview.start_time + planned_duration + timedelta(minutes=END_INTERVIEW_GRACE_MINUTES)
+
     history = [] # history for interview
-    
+    sequence_number = 0
+
     await websocket.accept()
-    
+
     try:
         greeting = (
             f"Hello, I am your AI interviewer for today's {interview.role} "
@@ -175,14 +182,63 @@ async def interview_session(
         history.append({"role": "assistant", "content": greeting})
 
         while True:
-            audio_bytes = await websocket.receive_bytes()
-            transcribed_bytes = transcribe_audio(audio_bytes)
+            now = datetime.now()
+            if now >= hard_deadline:
+                closing_text = (
+                    "Oh, I didn't realize how much time had passed - looks like we're "
+                    "out of time for today's interview. Thanks so much for your answers, "
+                    "great work!"
+                )
+                await websocket.send_text(closing_text)
+                await websocket.send_bytes(synthesize_speech(closing_text))
+                await websocket.close(code=status.WS_1000_NORMAL_CLOSURE)
+                break
 
-            if not transcribed_bytes:
+            elapsed = now - interview.start_time
+            remaining = max(timedelta(0), planned_duration - elapsed)
+            time_check = TIME_CHECK_TEMPLATE.format(
+                elapsed_minutes=int(elapsed.total_seconds() // 60),
+                planned_duration=interview.planned_duration,
+                remaining_minutes=int(remaining.total_seconds() // 60),
+                question_number=sequence_number + 1,
+            )
+
+            question_text = ask_claude(history, system_prompt + time_check) # look into changing system prompt
+            sequence_number += 1
+            asked_at = datetime.now()
+
+            question = QuestionModel(
+                interview_id=interview.id,
+                sequence_number=sequence_number,
+                question_text=question_text,
+                asked_at=asked_at,
+            )
+            db.add(question)
+            db.commit()
+            db.refresh(question)
+
+            history.append({"role": "assistant", "content": question_text})
+
+            question_audio = synthesize_speech(question_text)
+            await websocket.send_bytes(question_audio)
+
+            audio_bytes = await websocket.receive_bytes()
+            transcript_text = transcribe_audio(audio_bytes)
+
+            if not transcript_text:
                 await websocket.send_text("Is your mic turned on? I cannot hear you.")
                 continue
 
-            print("transcibed bytes:" + transcribed_bytes)
+            response = ResponseModel(
+                question_id=question.id,
+                transcript_text=transcript_text,
+                response_time_seconds=(datetime.now() - asked_at).total_seconds(),
+            )
+            db.add(response)
+            db.commit()
+
+            history.append({"role": "user", "content": transcript_text})
+
 
     except WebSocketDisconnect:
         pass
@@ -192,4 +248,6 @@ async def interview_session(
     finally:
         interview.end_time = datetime.now()
         interview.completed = True
+        
+        # provide overall feedback and score for the interview using claude
         db.commit()
