@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import (
@@ -18,7 +19,7 @@ from api.prompts import INTERVIEWER_SYSTEM_PROMPT
 from api.schemas.interview import Interview, InterviewCreate, InterviewSummary
 from api.schemas.question import Question
 from api.schemas.response import Response
-from api.services.claude_service import ask_claude
+from api.services.claude_service import ask_claude, transcribe_resume
 from api.services.security import get_current_user, get_user_from_token
 from api.services.speech_service import synthesize_speech, transcribe_audio
 
@@ -139,9 +140,28 @@ async def interview_session(
     if interview.completed:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
+    
+    if interview.resume is not None:
+        resume_text = transcribe_resume(interview.resume)
+        resume_text = transcribe_resume(current_user.additional_info.resume)
+    else:
+        resume_text = None
 
+    system_prompt = INTERVIEWER_SYSTEM_PROMPT
+    
+    if resume_text is not None:
+        system_prompt += (
+            "\n\nHere is the candidate's resume. Use it to ask relevant, "
+            "personalized questions:\n\n" + resume_text
+        )
+
+    interview.start_time = datetime.now()
+    db.commit()
+
+    history = [] # history for interview
+    
     await websocket.accept()
-
+    
     try:
         while True:
             await websocket.receive()
@@ -152,3 +172,8 @@ async def interview_session(
         pass
     except Exception:
         await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+    finally:
+        # save finish time for interview
+        interview.end_time = datetime.now()
+        interview.completed = True
+        db.commit()
