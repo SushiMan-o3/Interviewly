@@ -163,6 +163,16 @@ async def interview_session(
     await websocket.accept()
     
     try:
+        greeting = (
+            f"Hello, I am your AI interviewer for today's {interview.role} "
+            f"interview at {interview.company}. Let's get started."
+        )
+
+        greeting_audio = synthesize_speech(greeting)
+        await websocket.send_bytes(greeting_audio)
+
+        history.append({"role": "assistant", "content": greeting})
+
         while True:
             await websocket.receive()
             
@@ -173,7 +183,6 @@ async def interview_session(
     except Exception:
         await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
     finally:
-        # save finish time for interview
         interview.end_time = datetime.now()
         interview.completed = True
         db.commit()
