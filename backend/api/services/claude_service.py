@@ -11,7 +11,7 @@ client = Anthropic(api_key=ANTHROPIC_API_KEY)
 def ask_claude(messages: list[dict], system_prompt: str) -> str:
     response = client.messages.create(
         model=ANTHROPIC_MODEL,
-        max_tokens=64000,
+        max_tokens=1024,
         system=system_prompt,
         messages=messages,
     )

@@ -1,5 +1,5 @@
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import (
@@ -164,7 +164,7 @@ async def interview_session(
             "personalized questions:\n\n" + resume_text
         )
 
-    interview.start_time = datetime.now()
+    interview.start_time = datetime.now(timezone.utc)
     db.commit()
 
     planned_duration = timedelta(minutes=interview.planned_duration)
@@ -181,27 +181,29 @@ async def interview_session(
             f"interview at {interview.company}. Let's get started."
         )
 
-        greeting_audio = synthesize_speech(greeting)
-        await websocket.send_bytes(greeting_audio)
-
-        history.append({"role": "assistant", "content": greeting})
-
         pending_response = None  # the most recent unrated ResponseModel, awaiting feedback
+        asked_closing_question = False  # whether we've already asked "do you have any questions for me?"
 
         while True:
-            now = datetime.now()
-            if now >= hard_deadline:
+            now = datetime.now(timezone.utc)
+            if now >= hard_deadline or asked_closing_question:
                 if pending_response is not None:
                     result = ask_claude_with_feedback(history, system_prompt)
                     pending_response.feedback = result["feedback"]
                     pending_response.score = result["rating"]
                     db.commit()
 
-                closing_text = (
-                    "Oh, I didn't realize how much time had passed - looks like we're "
-                    "out of time for today's interview. Thanks so much for your answers, "
-                    "great work!"
-                )
+                if now >= hard_deadline and not asked_closing_question:
+                    closing_text = (
+                        "Oh, I didn't realize how much time had passed - looks like we're "
+                        "out of time for today's interview. Thanks so much for your answers, "
+                        "great work!"
+                    )
+                else:
+                    closing_text = (
+                        "Great, that's all the time we have for today. Thanks so much for "
+                        "your answers - great work!"
+                    )
                 await websocket.send_text(closing_text)
                 await websocket.send_bytes(synthesize_speech(closing_text))
                 await websocket.close(code=status.WS_1000_NORMAL_CLOSURE)
@@ -219,6 +221,19 @@ async def interview_session(
             if pending_response is None:
                 # First question of the interview: there's no prior answer to grade yet.
                 question_text = ask_claude(history, system_prompt + time_check)
+                question_text = f"{greeting} {question_text}"
+            elif remaining <= timedelta(0):
+                # Planned time is up: grade the last answer, then close out with a
+                # dedicated "any questions for me?" turn instead of another interview question.
+                result = ask_claude_with_feedback(history, system_prompt + time_check)
+                pending_response.feedback = result["feedback"]
+                pending_response.score = result["rating"]
+                db.commit()
+                question_text = (
+                    "That wraps up the interview questions I had for you. Do you have "
+                    "any questions for me?"
+                )
+                asked_closing_question = True
             else:
                 result = ask_claude_with_feedback(history, system_prompt + time_check)
                 pending_response.feedback = result["feedback"]
@@ -227,7 +242,7 @@ async def interview_session(
                 question_text = result["next_question"]
 
             sequence_number += 1
-            asked_at = datetime.now()
+            asked_at = datetime.now(timezone.utc)
 
             question = QuestionModel(
                 interview_id=interview.id,
@@ -254,7 +269,7 @@ async def interview_session(
             response = ResponseModel(
                 question_id=question.id,
                 transcript_text=transcript_text,
-                response_time_seconds=(datetime.now() - asked_at).total_seconds(),
+                response_time_seconds=(datetime.now(timezone.utc) - asked_at).total_seconds(),
                 # pending feedback and score to be filled in after grading
             )
             db.add(response)
@@ -271,7 +286,7 @@ async def interview_session(
         traceback.print_exc()
         await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
     finally:
-        interview.end_time = datetime.now()
+        interview.end_time = datetime.now(timezone.utc)
         interview.completed = True
 
         if any(message["role"] == "user" for message in history):
