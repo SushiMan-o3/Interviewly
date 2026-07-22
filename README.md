@@ -3,7 +3,7 @@ AI mock interviewer that asks questions, listens to your answers, and gives real
 
 Also deployment doesnt work, i just set it up so that I could get the domain i wanted.
 
-Made by Sushim Malla, Gurnoor Sandhu
+Made by Sushim Malla
 
 ## How it works
 - ill write this later 
