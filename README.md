@@ -1,7 +1,7 @@
 # Interviewly
 AI mock interviewer that asks questions, listens to your answers, and gives real-time feedback — for technical and behavioral interview prep.
 
-Made by Sushim Malla, Gurnoor Sandhu
+Made by Sushim Malla
 
 ## How it works
 - ill write this later 
