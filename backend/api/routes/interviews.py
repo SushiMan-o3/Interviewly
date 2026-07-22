@@ -20,7 +20,12 @@ from api.models import Response as ResponseModel
 from api.models import User as UserModel
 from api.prompts import INTERVIEWER_SYSTEM_PROMPT, TIME_CHECK_TEMPLATE
 from api.schemas.interview import Interview, InterviewCreate, InterviewSummary
-from api.services.claude_service import ask_claude, transcribe_resume
+from api.services.claude_service import (
+    ask_claude,
+    ask_claude_overall_feedback,
+    ask_claude_with_feedback,
+    transcribe_resume,
+)
 from api.services.security import get_current_user, get_user_from_token
 from api.services.speech_service import synthesize_speech, transcribe_audio
 
@@ -181,9 +186,17 @@ async def interview_session(
 
         history.append({"role": "assistant", "content": greeting})
 
+        pending_response = None  # the most recent unrated ResponseModel, awaiting feedback
+
         while True:
             now = datetime.now()
             if now >= hard_deadline:
+                if pending_response is not None:
+                    result = ask_claude_with_feedback(history, system_prompt)
+                    pending_response.feedback = result["feedback"]
+                    pending_response.score = result["rating"]
+                    db.commit()
+
                 closing_text = (
                     "Oh, I didn't realize how much time had passed - looks like we're "
                     "out of time for today's interview. Thanks so much for your answers, "
@@ -203,7 +216,16 @@ async def interview_session(
                 question_number=sequence_number + 1,
             )
 
-            question_text = ask_claude(history, system_prompt + time_check) # look into changing system prompt
+            if pending_response is None:
+                # First question of the interview: there's no prior answer to grade yet.
+                question_text = ask_claude(history, system_prompt + time_check)
+            else:
+                result = ask_claude_with_feedback(history, system_prompt + time_check)
+                pending_response.feedback = result["feedback"]
+                pending_response.score = result["rating"]
+                db.commit()
+                question_text = result["next_question"]
+
             sequence_number += 1
             asked_at = datetime.now()
 
@@ -233,11 +255,14 @@ async def interview_session(
                 question_id=question.id,
                 transcript_text=transcript_text,
                 response_time_seconds=(datetime.now() - asked_at).total_seconds(),
+                # pending feedback and score to be filled in after grading
             )
             db.add(response)
             db.commit()
+            db.refresh(response)
 
             history.append({"role": "user", "content": transcript_text})
+            pending_response = response
 
 
     except WebSocketDisconnect:
@@ -248,6 +273,13 @@ async def interview_session(
     finally:
         interview.end_time = datetime.now()
         interview.completed = True
-        
-        # provide overall feedback and score for the interview using claude
+
+        if any(message["role"] == "user" for message in history):
+            try:
+                overall = ask_claude_overall_feedback(history, system_prompt)
+                interview.overall_score = overall["overall_score"]
+                interview.feedback = overall["feedback"]
+            except Exception:
+                traceback.print_exc()
+
         db.commit()
