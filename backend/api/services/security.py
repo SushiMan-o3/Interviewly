@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -7,8 +8,15 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from api import models
-from api.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
+from api.config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    ALGORITHM,
+    PASSWORD_RESET_EXPIRE_MINUTES,
+    SECRET_KEY,
+)
 from api.database import get_db
+
+PASSWORD_RESET_PURPOSE = "password_reset"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
@@ -32,6 +40,42 @@ def create_access_token(username: str) -> str:
         {"sub": username},
         timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
+
+
+def _password_version(hashed_password: str) -> str:
+    return hashlib.sha256(hashed_password.encode("utf-8")).hexdigest()[:16]
+
+
+def create_password_reset_token(user: models.User) -> str:
+    return create_jwt_auth_token(
+        {
+            "sub": user.username,
+            "purpose": PASSWORD_RESET_PURPOSE,
+            "pwv": _password_version(user.hashed_password),
+        },
+        timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES),
+    )
+
+
+def verify_password_reset_token(token: str, db: Session) -> models.User:
+    invalid_token_exception = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="This reset link is invalid or has expired",
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.PyJWTError:
+        raise invalid_token_exception
+
+    if payload.get("purpose") != PASSWORD_RESET_PURPOSE:
+        raise invalid_token_exception
+
+    username = payload.get("sub")
+    user = db.query(models.User).filter(models.User.username == username).first() if username else None
+    if user is None or payload.get("pwv") != _password_version(user.hashed_password):
+        raise invalid_token_exception
+
+    return user
 
 
 def get_user_from_token(token: str, db: Session) -> models.User:

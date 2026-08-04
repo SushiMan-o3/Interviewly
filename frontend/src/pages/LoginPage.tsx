@@ -80,6 +80,9 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+              <Link to="/forgot-password" style={{ display: "inline-block", marginTop: 8, fontSize: 13 }}>
+                Forgot password?
+              </Link>
             </div>
 
             <button

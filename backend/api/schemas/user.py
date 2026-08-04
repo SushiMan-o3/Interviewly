@@ -18,6 +18,15 @@ class UserLogin(BaseModel):
     password: str
 
 
+class ForgetPasswordRequest(BaseModel):
+    identifier: str = Field(description="Username or email")
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8)
+
+
 class User(UserBase):
     id: int
     created_at: datetime
