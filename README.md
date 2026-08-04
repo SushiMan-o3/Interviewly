@@ -29,8 +29,7 @@ Made by Sushim Malla
 <img width="707" height="741" alt="image" src="https://github.com/user-attachments/assets/38f0bfc8-a437-4518-b2df-bf11013fbbdf" />
 
 ## Schema Design
-
-sfhksfhsifhsfhsf
+<img width="1024" height="732" alt="image" src="https://github.com/user-attachments/assets/68d7c54f-3fef-446d-b1f8-cb8c9c74bc9d" />
 
 ## Insipiration
 After taking a few interviews and realizing how difficult interviews can be and how much preparation is needed for them, I thought it would be a good idea to create a tool that could help me and my friends pass interviews and hopefully land us an internship where nice. 
