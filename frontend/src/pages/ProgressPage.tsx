@@ -208,28 +208,7 @@ export default function ProgressPage() {
     <div className="frame-nocturne" style={{ minHeight: "100vh" }}>
       <Navbar />
 
-      <div style={{ position: "relative", padding: "48px 64px", maxWidth: 1280, margin: "0 auto" }}>
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(10, 11, 20, 0.85)",
-            backdropFilter: "blur(6px)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 30,
-            textAlign: "center",
-          }}
-        >
-          <div style={{ fontSize: 56, marginBottom: 12 }}>:)</div>
-          <h1 style={{ margin: 0, fontSize: 40 }}>Under development</h1>
-        </div>
-
+      <div style={{ padding: "48px 64px", maxWidth: 1280, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
           <div>
             <h1 style={{ marginBottom: 4 }}>Your progress</h1>

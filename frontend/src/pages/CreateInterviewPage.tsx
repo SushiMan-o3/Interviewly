@@ -17,7 +17,7 @@ export default function CreateInterviewPage() {
   const [resume, setResume] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState<"now" | "later" | null>(null);
 
   const handleFile = (file: File | null) => {
     if (file && file.type !== "application/pdf") {
@@ -34,11 +34,14 @@ export default function CreateInterviewPage() {
     handleFile(event.dataTransfer.files[0] ?? null);
   };
 
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
 
-    setSubmitting(true);
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const intent = submitter?.value === "later" ? "later" : "now";
+
+    setSubmitting(intent);
     try {
       const interview = await interviewsApi.createInterview({
         company,
@@ -48,7 +51,7 @@ export default function CreateInterviewPage() {
         planned_duration: duration,
         resume,
       });
-      navigate(`/interviews/${interview.id}/session`);
+      navigate(intent === "later" ? "/interviews" : `/interviews/${interview.id}/session`);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.data?.detail) {
         setError(String(err.response.data.detail));
@@ -56,7 +59,7 @@ export default function CreateInterviewPage() {
         setError("Something went wrong. Please try again.");
       }
     } finally {
-      setSubmitting(false);
+      setSubmitting(null);
     }
   };
 
@@ -185,8 +188,25 @@ export default function CreateInterviewPage() {
           </div>
 
           <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-            <button className="btn btn-primary" type="submit" disabled={submitting} style={{ padding: "11px 24px", fontSize: 15 }}>
-              {submitting ? "Creating…" : "Start interview"}
+            <button
+              className="btn btn-primary"
+              type="submit"
+              name="intent"
+              value="now"
+              disabled={submitting !== null}
+              style={{ padding: "11px 24px", fontSize: 15 }}
+            >
+              {submitting === "now" ? "Creating…" : "Start interview"}
+            </button>
+            <button
+              className="btn btn-secondary"
+              type="submit"
+              name="intent"
+              value="later"
+              disabled={submitting !== null}
+              style={{ padding: "11px 24px", fontSize: 15 }}
+            >
+              {submitting === "later" ? "Saving…" : "Join later"}
             </button>
             <Link className="btn btn-secondary" to="/interviews" style={{ padding: "11px 24px", fontSize: 15, textAlign: "center" }}>
               Cancel
