@@ -5,9 +5,6 @@ Also deployment doesnt work, i just set it up so that I could get the domain i w
 
 Made by Sushim Malla
 
-## How it works
-- ill write this later 
-
 ## Technologies
 
 **Backend**
