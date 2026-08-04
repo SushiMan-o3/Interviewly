@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.config import FRONTEND_URL
 from api.database import init_db
 from api.routes import auth, interviews, settings, dashboard
 
@@ -17,7 +18,8 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+    allow_origins=[FRONTEND_URL],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+|https://interviewly-beige(-[a-z0-9]+)*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
